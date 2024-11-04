@@ -30,6 +30,20 @@ func (uu *UserUpdate) Where(ps ...predicate.User) *UserUpdate {
 	return uu
 }
 
+// SetClerkUserID sets the "clerk_user_id" field.
+func (uu *UserUpdate) SetClerkUserID(s string) *UserUpdate {
+	uu.mutation.SetClerkUserID(s)
+	return uu
+}
+
+// SetNillableClerkUserID sets the "clerk_user_id" field if the given value is not nil.
+func (uu *UserUpdate) SetNillableClerkUserID(s *string) *UserUpdate {
+	if s != nil {
+		uu.SetClerkUserID(*s)
+	}
+	return uu
+}
+
 // SetFullName sets the "full_name" field.
 func (uu *UserUpdate) SetFullName(s string) *UserUpdate {
 	uu.mutation.SetFullName(s)
@@ -243,6 +257,11 @@ func (uu *UserUpdate) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (uu *UserUpdate) check() error {
+	if v, ok := uu.mutation.ClerkUserID(); ok {
+		if err := user.ClerkUserIDValidator(v); err != nil {
+			return &ValidationError{Name: "clerk_user_id", err: fmt.Errorf(`ent: validator failed for field "User.clerk_user_id": %w`, err)}
+		}
+	}
 	if v, ok := uu.mutation.FullName(); ok {
 		if err := user.FullNameValidator(v); err != nil {
 			return &ValidationError{Name: "full_name", err: fmt.Errorf(`ent: validator failed for field "User.full_name": %w`, err)}
@@ -272,6 +291,9 @@ func (uu *UserUpdate) sqlSave(ctx context.Context) (n int, err error) {
 				ps[i](selector)
 			}
 		}
+	}
+	if value, ok := uu.mutation.ClerkUserID(); ok {
+		_spec.SetField(user.FieldClerkUserID, field.TypeString, value)
 	}
 	if value, ok := uu.mutation.FullName(); ok {
 		_spec.SetField(user.FieldFullName, field.TypeString, value)
@@ -441,6 +463,20 @@ type UserUpdateOne struct {
 	fields   []string
 	hooks    []Hook
 	mutation *UserMutation
+}
+
+// SetClerkUserID sets the "clerk_user_id" field.
+func (uuo *UserUpdateOne) SetClerkUserID(s string) *UserUpdateOne {
+	uuo.mutation.SetClerkUserID(s)
+	return uuo
+}
+
+// SetNillableClerkUserID sets the "clerk_user_id" field if the given value is not nil.
+func (uuo *UserUpdateOne) SetNillableClerkUserID(s *string) *UserUpdateOne {
+	if s != nil {
+		uuo.SetClerkUserID(*s)
+	}
+	return uuo
 }
 
 // SetFullName sets the "full_name" field.
@@ -669,6 +705,11 @@ func (uuo *UserUpdateOne) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (uuo *UserUpdateOne) check() error {
+	if v, ok := uuo.mutation.ClerkUserID(); ok {
+		if err := user.ClerkUserIDValidator(v); err != nil {
+			return &ValidationError{Name: "clerk_user_id", err: fmt.Errorf(`ent: validator failed for field "User.clerk_user_id": %w`, err)}
+		}
+	}
 	if v, ok := uuo.mutation.FullName(); ok {
 		if err := user.FullNameValidator(v); err != nil {
 			return &ValidationError{Name: "full_name", err: fmt.Errorf(`ent: validator failed for field "User.full_name": %w`, err)}
@@ -715,6 +756,9 @@ func (uuo *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) 
 				ps[i](selector)
 			}
 		}
+	}
+	if value, ok := uuo.mutation.ClerkUserID(); ok {
+		_spec.SetField(user.FieldClerkUserID, field.TypeString, value)
 	}
 	if value, ok := uuo.mutation.FullName(); ok {
 		_spec.SetField(user.FieldFullName, field.TypeString, value)

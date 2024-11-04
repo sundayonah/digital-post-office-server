@@ -370,12 +370,12 @@ func (uq *UserQuery) WithNotifications(opts ...func(*NotificationQuery)) *UserQu
 // Example:
 //
 //	var v []struct {
-//		FullName string `json:"full_name,omitempty"`
+//		ClerkUserID string `json:"clerk_user_id,omitempty"`
 //		Count int `json:"count,omitempty"`
 //	}
 //
 //	client.User.Query().
-//		GroupBy(user.FieldFullName).
+//		GroupBy(user.FieldClerkUserID).
 //		Aggregate(ent.Count()).
 //		Scan(ctx, &v)
 func (uq *UserQuery) GroupBy(field string, fields ...string) *UserGroupBy {
@@ -393,11 +393,11 @@ func (uq *UserQuery) GroupBy(field string, fields ...string) *UserGroupBy {
 // Example:
 //
 //	var v []struct {
-//		FullName string `json:"full_name,omitempty"`
+//		ClerkUserID string `json:"clerk_user_id,omitempty"`
 //	}
 //
 //	client.User.Query().
-//		Select(user.FieldFullName).
+//		Select(user.FieldClerkUserID).
 //		Scan(ctx, &v)
 func (uq *UserQuery) Select(fields ...string) *UserSelect {
 	uq.ctx.Fields = append(uq.ctx.Fields, fields...)

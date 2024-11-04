@@ -4,11 +4,13 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
-	"time"
+	"strconv"
 
 	"github.com/sundayonah/digital_post_office/ent"
+	"github.com/sundayonah/digital_post_office/ent/order"
 	"github.com/sundayonah/digital_post_office/ent/user"
 	"github.com/sundayonah/digital_post_office/notification"
+	"github.com/sundayonah/digital_post_office/types"
 )
 
 // OrderHandler struct manages order operations.
@@ -29,7 +31,7 @@ func NewOrderHandler(client *ent.Client, ns *notification.NotificationService) *
 func (h *OrderHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	var req CreateOrderRequest
+	var req types.CreateOrderRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -117,7 +119,7 @@ func (h *OrderHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	// Format and send response including safe_code
-	response := OrderResponse{
+	response := types.OrderResponse{
 		ID:                 order.ID,
 		TrackingNumber:     order.TrackingNumber,
 		PackageDescription: order.PackageDescription,
@@ -125,13 +127,13 @@ func (h *OrderHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 		SafeCode:           order.SafeCode,
 		CreatedAt:          order.CreatedAt,
 		UpdatedAt:          order.UpdatedAt,
-		Sender: UserResponse{
+		Sender: types.UserResponse{
 			FullName:  sender.FullName,
 			Phone:     sender.Phone,
 			Email:     sender.Email,
 			CreatedAt: sender.CreatedAt,
 		},
-		Recipient: UserResponse{
+		Recipient: types.UserResponse{
 			FullName:  recipient.FullName,
 			Phone:     recipient.Phone,
 			Email:     recipient.Email,
@@ -159,22 +161,22 @@ func (h *OrderHandler) GetAllOrders(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Map orders to custom response
-	var response []OrderResponse
+	var response []types.OrderResponse
 	for _, order := range orders {
-		response = append(response, OrderResponse{
+		response = append(response, types.OrderResponse{
 			ID:                 order.ID,
 			TrackingNumber:     order.TrackingNumber,
 			PackageDescription: order.PackageDescription,
 			Status:             order.Status.String(),
 			CreatedAt:          order.CreatedAt,
 			UpdatedAt:          order.UpdatedAt,
-			Sender: UserResponse{
+			Sender: types.UserResponse{
 				FullName:  order.Edges.Sender.FullName,
 				Phone:     order.Edges.Sender.Phone,
 				Email:     order.Edges.Sender.Email,
 				CreatedAt: order.Edges.Sender.CreatedAt,
 			},
-			Recipient: UserResponse{
+			Recipient: types.UserResponse{
 				FullName:  order.Edges.Recipient.FullName,
 				Phone:     order.Edges.Recipient.Phone,
 				Email:     order.Edges.Recipient.Email,
@@ -191,35 +193,224 @@ func (h *OrderHandler) GetAllOrders(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// CreateOrderRequest represents the JSON request structure for creating an order.
-type CreateOrderRequest struct {
-	TrackingNumber    string `json:"tracking_number"`
-	SenderFullName    string `json:"sender_full_name"`
-	SenderPhone       string `json:"sender_phone"`
-	SenderEmail       string `json:"sender_email"`
-	RecipientFullName string `json:"recipient_full_name"`
-	RecipientPhone    string `json:"recipient_phone"`
-	RecipientEmail    string `json:"recipient_email"`
-	Description       string `json:"description"`
+// GetOrderByID retrieves a specific order by its ID.
+func (h *OrderHandler) GetOrderByID(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	id := r.URL.Query().Get("id") // Assuming the ID is passed as a query parameter.
+
+	idInt, err := strconv.Atoi(id)
+	if err != nil {
+		http.Error(w, "Invalid order ID", http.StatusBadRequest)
+	}
+
+	order, err := h.client.Order.Query().
+		Where(order.ID(idInt)).
+		WithSender().
+		WithRecipient().
+		Only(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			http.Error(w, "Order not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "Failed to retrieve order", http.StatusInternalServerError)
+		return
+	}
+
+	response := types.OrderResponse{
+		ID:                 order.ID,
+		TrackingNumber:     order.TrackingNumber,
+		PackageDescription: order.PackageDescription,
+		Status:             order.Status.String(),
+		CreatedAt:          order.CreatedAt,
+		UpdatedAt:          order.UpdatedAt,
+		Sender: types.UserResponse{
+			FullName:  order.Edges.Sender.FullName,
+			Phone:     order.Edges.Sender.Phone,
+			Email:     order.Edges.Sender.Email,
+			CreatedAt: order.Edges.Sender.CreatedAt,
+		},
+		Recipient: types.UserResponse{
+			FullName:  order.Edges.Recipient.FullName,
+			Phone:     order.Edges.Recipient.Phone,
+			Email:     order.Edges.Recipient.Email,
+			CreatedAt: order.Edges.Recipient.CreatedAt,
+		},
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
 }
 
-// OrderResponse represents the JSON response structure for orders.
-type OrderResponse struct {
-	ID                 int          `json:"id"`
-	TrackingNumber     string       `json:"tracking_number"`
-	PackageDescription string       `json:"package_description"`
-	Status             string       `json:"status"`
-	SafeCode           string       `json:"safe_code"`
-	CreatedAt          time.Time    `json:"created_at"`
-	UpdatedAt          time.Time    `json:"updated_at"`
-	Sender             UserResponse `json:"sender"`
-	Recipient          UserResponse `json:"recipient"`
+// UpdateOrder updates an existing order.
+// func (h *OrderHandler) UpdateOrder(w http.ResponseWriter, r *http.Request) {
+// 	ctx := r.Context()
+// 	idStr := r.URL.Query().Get("id")
+
+// 	// convert ID from string to int (assuming ID is an int)
+// 	id, err := strconv.Atoi(idStr)
+// 	if err != nil {
+// 		http.Error(w, "Invalid order ID", http.StatusBadRequest)
+// 		return
+// 	}
+
+// 	var req types.UpdateOrderRequest
+// 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+// 		http.Error(w, err.Error(), http.StatusBadRequest)
+// 		return
+// 	}
+
+// 	order, err := h.client.Order.Get(ctx, id)
+// 	if err != nil {
+// 		if ent.IsNotFound(err) {
+// 			http.Error(w, "Order not found", http.StatusNotFound)
+// 			return
+// 		}
+// 		http.Error(w, "Failed to retrieve order", http.StatusInternalServerError)
+// 		return
+// 	}
+
+// 	// Assuming you have a function like StatusFromString that converts string to types.OrderStatus
+// 	status, err := types.StatusFromString(req.Status)
+// 	if err != nil {
+// 		http.Error(w, "Invalid status", http.StatusBadRequest)
+// 		return
+// 	}
+
+// 	// Convert types.OrderStatus to the appropriate enum value
+// 	var entStatus string
+// 	switch status {
+// 	case types.StatusPending:
+// 		entStatus = order.StatusPending
+// 	case types.StatusDelivered:
+// 		entStatus = order.StatusDelivered
+// 	case types.StatusCancelled:
+// 		entStatus = order.StatusCancelled
+// 	default:
+// 		http.Error(w, "Invalid status", http.StatusBadRequest)
+// 		return
+// 	}
+
+// 	// Update the order details
+// 	order, err = h.client.Order.UpdateOne(order).
+// 		SetPackageDescription(req.Description).
+// 		SetStatus(entStatus).
+// 		Save(ctx)
+
+// 	response := types.OrderResponse{
+// 		ID:                 order.ID,
+// 		TrackingNumber:     order.TrackingNumber,
+// 		PackageDescription: order.PackageDescription,
+// 		Status:             order.Status.String(),
+// 		CreatedAt:          order.CreatedAt,
+// 		UpdatedAt:          order.UpdatedAt,
+// 	}
+
+// 	w.Header().Set("Content-Type", "application/json")
+// 	json.NewEncoder(w).Encode(response)
+// }
+
+// DeleteOrder removes an order by its ID.
+func (h *OrderHandler) DeleteOrder(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	id := r.URL.Query().Get("id")
+
+	idInt, err := strconv.Atoi(id)
+	if err != nil {
+		http.Error(w, "Invalid order ID", http.StatusBadRequest)
+	}
+
+	err = h.client.Order.DeleteOneID(idInt).Exec(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			http.Error(w, "Order not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "Failed to delete order", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent) // No content for successful deletion.
 }
 
-// UserResponse represents the JSON response structure for a user.
-type UserResponse struct {
-	FullName  string    `json:"full_name"`
-	Phone     string    `json:"phone"`
-	Email     string    `json:"email"`
-	CreatedAt time.Time `json:"created_at"`
+// RegisterUser creates a new user in the system.
+func (h *OrderHandler) RegisterUser(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	var req types.RegisterUserRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	user, err := h.client.User.Create().
+		SetFullName(req.FullName).
+		SetEmail(req.Email).
+		SetPhone(req.Phone).
+		Save(ctx)
+	if err != nil {
+		http.Error(w, "Failed to register user", http.StatusInternalServerError)
+		return
+	}
+
+	response := types.UserResponse{
+		// ID:        user.ID,
+		FullName:  user.FullName,
+		Email:     user.Email,
+		Phone:     user.Phone,
+		CreatedAt: user.CreatedAt,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+// GetUserOrders retrieves all orders for a specific user.
+func (h *OrderHandler) GetUserOrders(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	userID := r.URL.Query().Get("user_id")
+
+	userInt, err := strconv.Atoi(userID)
+	if err != nil {
+		http.Error(w, "Invalid order ID", http.StatusBadRequest)
+	}
+
+	// Fetch orders where the user is either the sender or recipient
+	orders, err := h.client.Order.Query().
+		Where(order.HasSenderWith(user.ID(userInt)), (order.HasRecipientWith(user.ID(userInt)))).
+		WithRecipient(). // This will load the recipient details
+		WithSender().    // If you also want to load the sender details
+		All(ctx)
+
+	if err != nil {
+		http.Error(w, "Failed to retrieve orders", http.StatusInternalServerError)
+		return
+	}
+
+	var response []types.OrderResponse
+	for _, order := range orders {
+		response = append(response, types.OrderResponse{
+			ID:                 order.ID,
+			TrackingNumber:     order.TrackingNumber,
+			PackageDescription: order.PackageDescription,
+			Status:             order.Status.String(),
+			CreatedAt:          order.CreatedAt,
+			UpdatedAt:          order.UpdatedAt,
+			Sender: types.UserResponse{
+				FullName:  order.Edges.Sender.FullName,
+				Phone:     order.Edges.Sender.Phone,
+				Email:     order.Edges.Sender.Email,
+				CreatedAt: order.Edges.Sender.CreatedAt,
+			},
+			Recipient: types.UserResponse{
+				FullName:  order.Edges.Recipient.FullName,
+				Phone:     order.Edges.Recipient.Phone,
+				Email:     order.Edges.Recipient.Email,
+				CreatedAt: order.Edges.Recipient.CreatedAt,
+			},
+		})
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
 }

@@ -14,6 +14,8 @@ const (
 	Label = "user"
 	// FieldID holds the string denoting the id field in the database.
 	FieldID = "id"
+	// FieldClerkUserID holds the string denoting the clerk_user_id field in the database.
+	FieldClerkUserID = "clerk_user_id"
 	// FieldFullName holds the string denoting the full_name field in the database.
 	FieldFullName = "full_name"
 	// FieldPhone holds the string denoting the phone field in the database.
@@ -58,6 +60,7 @@ const (
 // Columns holds all SQL columns for user fields.
 var Columns = []string{
 	FieldID,
+	FieldClerkUserID,
 	FieldFullName,
 	FieldPhone,
 	FieldEmail,
@@ -76,6 +79,8 @@ func ValidColumn(column string) bool {
 }
 
 var (
+	// ClerkUserIDValidator is a validator for the "clerk_user_id" field. It is called by the builders before save.
+	ClerkUserIDValidator func(string) error
 	// FullNameValidator is a validator for the "full_name" field. It is called by the builders before save.
 	FullNameValidator func(string) error
 	// PhoneValidator is a validator for the "phone" field. It is called by the builders before save.
@@ -96,6 +101,11 @@ type OrderOption func(*sql.Selector)
 // ByID orders the results by the id field.
 func ByID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldID, opts...).ToFunc()
+}
+
+// ByClerkUserID orders the results by the clerk_user_id field.
+func ByClerkUserID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldClerkUserID, opts...).ToFunc()
 }
 
 // ByFullName orders the results by the full_name field.

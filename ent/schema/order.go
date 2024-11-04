@@ -19,7 +19,7 @@ func (Order) Fields() []ent.Field {
 		field.String("safe_code").Sensitive().NotEmpty(),
 		field.String("package_description").NotEmpty(),
 		field.Enum("status").
-			Values("pending", "in_transit", "delivered", "cancelled").
+			Values("pending", "delivered", "cancelled").
 			Default("pending"),
 		field.Time("created_at").Default(time.Now),
 		field.Time("updated_at").Default(time.Now).UpdateDefault(time.Now),

@@ -42,6 +42,10 @@ func main() {
 	// Define routes
 	r.HandleFunc("/api/orders", orderHandler.CreateOrder).Methods("POST")
 	r.HandleFunc("/api/orders", orderHandler.GetAllOrders).Methods("GET")
+	r.HandleFunc("/api/orders/{id}", orderHandler.GetOrderByID).Methods("GET")
+	r.HandleFunc("/api/users/orders", orderHandler.GetUserOrders).Methods("GET")
+
+	// r.HandleFunc("/api/orders/{id}", orderHandler.UpdateOrder).Methods("PUT")
 
 	// Start server
 	log.Fatal(http.ListenAndServe(":8080", r))
